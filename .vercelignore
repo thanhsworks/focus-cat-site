@@ -1,4 +1,4 @@
 .DS_Store
 cat pixel/
-.vercel
-.env*
+.claude/
+.git/

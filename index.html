@@ -635,6 +635,7 @@
   </div>
 
   <div class="confetti-layer" id="confettiLayer"></div>
+  <audio id="bgMusic" src="assets/audio/lofi-midnight-club.mp3" loop preload="none"></audio>
 
   <!-- =================== cat selector popup =================== -->
   <div class="overlay" id="overlay">
@@ -837,129 +838,38 @@
   }
 
   /* ============================================================
-     PROCEDURAL AUDIO — cozy lofi ambience + completion chime.
-     Entirely synthesized with the Web Audio API (no audio files),
-     so there is nothing to license.
+     AUDIO — cozy lofi background track + a synthesized completion
+     chime (the chime stays procedural since it's just a short SFX;
+     the background track is the user-supplied lofi loop).
      ============================================================ */
 
   const AudioCtor = window.AudioContext || window.webkitAudioContext;
   let audioCtx = null;
-  let masterGain = null;
-  let padFilter = null;
   let musicEnabled = localStorage.getItem("focusCatMusicEnabled") !== "0";
-  let musicRunning = false;
-  let chordTimer = null;
-  let pluckTimer = null;
-  let chordIndex = 0;
-
-  // I - vi - IV - V in C major: the classic bright, cute/kawaii progression
-  const LOFI_CHORDS = [
-    [261.63, 329.63, 392.0],   // C
-    [220.0, 261.63, 329.63],   // Am (brief warmth, never lingers)
-    [349.23, 440.0, 523.25],   // F
-    [392.0, 493.88, 587.33],   // G
-  ];
-  const LOFI_PENTATONIC = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5];
-
-  function ensureAudio() {
-    if (audioCtx) return;
-    audioCtx = new AudioCtor();
-
-    masterGain = audioCtx.createGain();
-    masterGain.gain.value = musicEnabled ? 0.16 : 0;
-    masterGain.connect(audioCtx.destination);
-
-    padFilter = audioCtx.createBiquadFilter();
-    padFilter.type = "lowpass";
-    padFilter.frequency.value = 2200;
-    padFilter.Q.value = 0.5;
-    padFilter.connect(masterGain);
-
-    const noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 2, audioCtx.sampleRate);
-    const data = noiseBuffer.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
-    const noiseSource = audioCtx.createBufferSource();
-    noiseSource.buffer = noiseBuffer;
-    noiseSource.loop = true;
-    const noiseFilter = audioCtx.createBiquadFilter();
-    noiseFilter.type = "bandpass";
-    noiseFilter.frequency.value = 3000;
-    noiseFilter.Q.value = 0.5;
-    const noiseGain = audioCtx.createGain();
-    noiseGain.gain.value = 0.025;
-    noiseSource.connect(noiseFilter).connect(noiseGain).connect(masterGain);
-    noiseSource.start();
-  }
-
-  function playPadChord(freqs, duration) {
-    const now = audioCtx.currentTime;
-    freqs.forEach((freq) => {
-      const osc = audioCtx.createOscillator();
-      osc.type = "triangle";
-      osc.frequency.value = freq;
-      const g = audioCtx.createGain();
-      g.gain.setValueAtTime(0, now);
-      g.gain.linearRampToValueAtTime(0.45, now + 0.5);
-      g.gain.linearRampToValueAtTime(0.36, now + duration * 0.6);
-      g.gain.linearRampToValueAtTime(0, now + duration);
-      osc.connect(g).connect(padFilter);
-      osc.start(now);
-      osc.stop(now + duration + 0.1);
-    });
-  }
-
-  function playPluck() {
-    const now = audioCtx.currentTime;
-    const freq = LOFI_PENTATONIC[Math.floor(Math.random() * LOFI_PENTATONIC.length)];
-    const osc = audioCtx.createOscillator();
-    osc.type = "triangle";
-    osc.frequency.value = freq;
-    const g = audioCtx.createGain();
-    g.gain.setValueAtTime(0, now);
-    g.gain.linearRampToValueAtTime(0.1, now + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
-    osc.connect(g).connect(masterGain);
-    osc.start(now);
-    osc.stop(now + 1);
-  }
-
-  function scheduleChords() {
-    const duration = 3.0;
-    playPadChord(LOFI_CHORDS[chordIndex % LOFI_CHORDS.length], duration);
-    chordIndex++;
-    chordTimer = setTimeout(scheduleChords, duration * 1000);
-  }
-
-  function schedulePlucks() {
-    if (Math.random() < 0.7) playPluck();
-    chordTimer && (pluckTimer = setTimeout(schedulePlucks, 1200 + Math.random() * 1600));
-  }
+  const bgMusic = document.getElementById("bgMusic");
+  bgMusic.volume = 0.35;
 
   function startMusic() {
-    ensureAudio();
-    if (audioCtx.state === "suspended") audioCtx.resume();
-    if (musicRunning) return;
-    musicRunning = true;
-    chordIndex = 0;
-    scheduleChords();
-    schedulePlucks();
+    if (!musicEnabled) return;
+    const p = bgMusic.play();
+    if (p && p.catch) p.catch(() => {});
   }
 
   function stopMusic() {
-    musicRunning = false;
-    if (chordTimer) clearTimeout(chordTimer);
-    if (pluckTimer) clearTimeout(pluckTimer);
-    chordTimer = null;
-    pluckTimer = null;
+    bgMusic.pause();
   }
 
   function setMusicEnabled(enabled) {
     musicEnabled = enabled;
-    if (audioCtx && masterGain) {
-      masterGain.gain.linearRampToValueAtTime(enabled ? 0.16 : 0, audioCtx.currentTime + 0.3);
-    }
     localStorage.setItem("focusCatMusicEnabled", enabled ? "1" : "0");
+    if (enabled && running && !complete) startMusic();
+    else if (!enabled) bgMusic.pause();
     renderMusicIcon(document.getElementById("musicIcon"), musicEnabled);
+  }
+
+  function ensureAudio() {
+    if (audioCtx) return;
+    audioCtx = new AudioCtor();
   }
 
   function playCompletionChime() {

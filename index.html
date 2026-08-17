@@ -609,6 +609,7 @@
         <div class="timer-controls">
           <button class="pixel-btn play" id="playBtn" aria-label="Play/Pause"><span class="play-tri" id="playIcon"></span></button>
           <button class="pixel-btn" id="resetTimerBtn" aria-label="Reset"><canvas id="resetIcon"></canvas></button>
+          <button class="pixel-btn" id="musicBtn" aria-label="Toggle music"><canvas id="musicIcon"></canvas></button>
         </div>
       </div>
 
@@ -836,6 +837,183 @@
   }
 
   /* ============================================================
+     PROCEDURAL AUDIO — cozy lofi ambience + completion chime.
+     Entirely synthesized with the Web Audio API (no audio files),
+     so there is nothing to license.
+     ============================================================ */
+
+  const AudioCtor = window.AudioContext || window.webkitAudioContext;
+  let audioCtx = null;
+  let masterGain = null;
+  let padFilter = null;
+  let musicEnabled = localStorage.getItem("focusCatMusicEnabled") !== "0";
+  let musicRunning = false;
+  let chordTimer = null;
+  let pluckTimer = null;
+  let chordIndex = 0;
+
+  // I - vi - IV - V in C major: the classic bright, cute/kawaii progression
+  const LOFI_CHORDS = [
+    [261.63, 329.63, 392.0],   // C
+    [220.0, 261.63, 329.63],   // Am (brief warmth, never lingers)
+    [349.23, 440.0, 523.25],   // F
+    [392.0, 493.88, 587.33],   // G
+  ];
+  const LOFI_PENTATONIC = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5];
+
+  function ensureAudio() {
+    if (audioCtx) return;
+    audioCtx = new AudioCtor();
+
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = musicEnabled ? 0.16 : 0;
+    masterGain.connect(audioCtx.destination);
+
+    padFilter = audioCtx.createBiquadFilter();
+    padFilter.type = "lowpass";
+    padFilter.frequency.value = 2200;
+    padFilter.Q.value = 0.5;
+    padFilter.connect(masterGain);
+
+    const noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 2, audioCtx.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
+    const noiseSource = audioCtx.createBufferSource();
+    noiseSource.buffer = noiseBuffer;
+    noiseSource.loop = true;
+    const noiseFilter = audioCtx.createBiquadFilter();
+    noiseFilter.type = "bandpass";
+    noiseFilter.frequency.value = 3000;
+    noiseFilter.Q.value = 0.5;
+    const noiseGain = audioCtx.createGain();
+    noiseGain.gain.value = 0.025;
+    noiseSource.connect(noiseFilter).connect(noiseGain).connect(masterGain);
+    noiseSource.start();
+  }
+
+  function playPadChord(freqs, duration) {
+    const now = audioCtx.currentTime;
+    freqs.forEach((freq) => {
+      const osc = audioCtx.createOscillator();
+      osc.type = "triangle";
+      osc.frequency.value = freq;
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(0.45, now + 0.5);
+      g.gain.linearRampToValueAtTime(0.36, now + duration * 0.6);
+      g.gain.linearRampToValueAtTime(0, now + duration);
+      osc.connect(g).connect(padFilter);
+      osc.start(now);
+      osc.stop(now + duration + 0.1);
+    });
+  }
+
+  function playPluck() {
+    const now = audioCtx.currentTime;
+    const freq = LOFI_PENTATONIC[Math.floor(Math.random() * LOFI_PENTATONIC.length)];
+    const osc = audioCtx.createOscillator();
+    osc.type = "triangle";
+    osc.frequency.value = freq;
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(0.1, now + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+    osc.connect(g).connect(masterGain);
+    osc.start(now);
+    osc.stop(now + 1);
+  }
+
+  function scheduleChords() {
+    const duration = 3.0;
+    playPadChord(LOFI_CHORDS[chordIndex % LOFI_CHORDS.length], duration);
+    chordIndex++;
+    chordTimer = setTimeout(scheduleChords, duration * 1000);
+  }
+
+  function schedulePlucks() {
+    if (Math.random() < 0.7) playPluck();
+    chordTimer && (pluckTimer = setTimeout(schedulePlucks, 1200 + Math.random() * 1600));
+  }
+
+  function startMusic() {
+    ensureAudio();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    if (musicRunning) return;
+    musicRunning = true;
+    chordIndex = 0;
+    scheduleChords();
+    schedulePlucks();
+  }
+
+  function stopMusic() {
+    musicRunning = false;
+    if (chordTimer) clearTimeout(chordTimer);
+    if (pluckTimer) clearTimeout(pluckTimer);
+    chordTimer = null;
+    pluckTimer = null;
+  }
+
+  function setMusicEnabled(enabled) {
+    musicEnabled = enabled;
+    if (audioCtx && masterGain) {
+      masterGain.gain.linearRampToValueAtTime(enabled ? 0.16 : 0, audioCtx.currentTime + 0.3);
+    }
+    localStorage.setItem("focusCatMusicEnabled", enabled ? "1" : "0");
+    renderMusicIcon(document.getElementById("musicIcon"), musicEnabled);
+  }
+
+  function playCompletionChime() {
+    ensureAudio();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    const now = audioCtx.currentTime;
+    const notes = [523.25, 659.25, 783.99, 1046.5]; // C5 E5 G5 C6 — bright, happy arpeggio
+    const chimeGain = audioCtx.createGain();
+    chimeGain.gain.value = musicEnabled ? 0.22 : 0.22;
+    chimeGain.connect(audioCtx.destination);
+    notes.forEach((freq, i) => {
+      const start = now + i * 0.14;
+      const osc = audioCtx.createOscillator();
+      osc.type = "triangle";
+      osc.frequency.value = freq;
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(0, start);
+      g.gain.linearRampToValueAtTime(0.9, start + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, start + 0.9);
+      osc.connect(g).connect(chimeGain);
+      osc.start(start);
+      osc.stop(start + 1);
+    });
+  }
+
+  function renderMusicIcon(canvas, on) {
+    const scale = 2;
+    const ctx = setupCanvas(canvas, 12, 12, scale);
+    ctx.fillStyle = "#5c3f6e";
+    ctx.fillRect(1 * scale, 4 * scale, 3 * scale, 4 * scale);
+    ctx.fillRect(4 * scale, 3 * scale, 1 * scale, 6 * scale);
+    ctx.fillRect(5 * scale, 2 * scale, 1 * scale, 8 * scale);
+    if (on) {
+      ctx.strokeStyle = "#5c3f6e";
+      ctx.lineWidth = scale * 0.8;
+      ctx.beginPath();
+      ctx.arc(6 * scale, 6 * scale, 3 * scale, -0.6, 0.6);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(6 * scale, 6 * scale, 5 * scale, -0.6, 0.6);
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = "#b6538a";
+      ctx.lineWidth = scale * 0.9;
+      ctx.beginPath();
+      ctx.moveTo(8 * scale, 3 * scale);
+      ctx.lineTo(11 * scale, 9 * scale);
+      ctx.moveTo(11 * scale, 3 * scale);
+      ctx.lineTo(8 * scale, 9 * scale);
+      ctx.stroke();
+    }
+  }
+
+  /* ============================================================
      APP STATE + LOGIC
      ============================================================ */
 
@@ -970,11 +1148,12 @@
     catSprite.classList.add("bounce");
     setTimeout(() => catSprite.classList.remove("bounce"), 1600);
     spawnConfetti();
+    playCompletionChime();
     stopLoops();
     stopCamera();
+    stopMusic();
     setStatus("off");
     setPlayIcon(false);
-    playBtn.disabled = true;
     renderTimer();
   }
 
@@ -1101,6 +1280,7 @@
       sceneCaption.textContent = "STAY IN FRAME TO MELT THE ICE";
       setPlayIcon(true);
       renderTimer();
+      startMusic();
 
       detectionTimer = setInterval(detectLoop, DETECT_INTERVAL_MS);
       rafId = requestAnimationFrame(animationLoop);
@@ -1115,6 +1295,7 @@
     running = false;
     stopLoops();
     stopCamera();
+    stopMusic();
     setStatus("off");
     setPlayIcon(false);
     sceneCaption.textContent = "PAUSED — PRESS PLAY TO RESUME";
@@ -1126,6 +1307,7 @@
     faceDetected = false;
     stopLoops();
     stopCamera();
+    stopMusic();
     durationSet = false;
     totalMs = 0;
     remainingMs = 0;
@@ -1237,11 +1419,17 @@
   /* ---------------- wire up events ---------------- */
   timerPlaque.addEventListener("click", beginEdit);
   playBtn.addEventListener("click", () => {
-    if (complete) return;
-    if (running) pauseSession();
-    else startSession();
+    if (running) { pauseSession(); return; }
+    if (complete) {
+      complete = false;
+      completeMsg.classList.remove("show");
+      remainingMs = totalMs;
+      resetSceneInstant();
+    }
+    startSession();
   });
   resetTimerBtn.addEventListener("click", resetAll);
+  document.getElementById("musicBtn").addEventListener("click", () => setMusicEnabled(!musicEnabled));
   catSprite.addEventListener("click", openSelector);
   overlay.addEventListener("click", (e) => { if (e.target === overlay) closeSelector(); });
   document.getElementById("popupCloseBtn").addEventListener("click", closeSelector);
@@ -1257,6 +1445,7 @@
   renderWinIcon(document.getElementById("iconCanvas2"));
   renderCamIcon(document.getElementById("camIcon"));
   renderResetIcon(document.getElementById("resetIcon"));
+  renderMusicIcon(document.getElementById("musicIcon"), musicEnabled);
   renderMainCat();
   renderBowl(document.getElementById("bowlCanvas"));
   iceBlocks.forEach((block) => {

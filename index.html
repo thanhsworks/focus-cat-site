@@ -565,22 +565,20 @@
     bottom: 18px;
     z-index: 40;
     align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
-    background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    background: rgba(255, 255, 255, 0.55);
     border: 2px solid var(--plum);
-    box-shadow: 3px 3px 0 var(--shadow);
-    font-family: 'Press Start 2P', monospace;
-    font-size: 10px;
-    letter-spacing: 0.5px;
-    color: #fff;
-    text-decoration: none;
+    box-shadow: 2px 2px 0 var(--shadow);
     cursor: pointer;
+    opacity: 0.8;
+    text-decoration: none;
   }
   .kofi-btn.show { display: flex; }
-  .kofi-btn:hover { filter: brightness(1.08); }
-  .kofi-btn:active { box-shadow: 0 0 0 var(--shadow); transform: translate(3px, 3px); }
-  .kofi-btn canvas { width: 16px; height: 16px; flex: none; }
+  .kofi-btn:hover { opacity: 1; background: rgba(255, 255, 255, 0.85); }
+  .kofi-btn:active { box-shadow: 0 0 0 var(--shadow); transform: translate(2px, 2px); }
+  .kofi-btn canvas { width: 18px; height: 18px; flex: none; }
 
   /* ---- instagram icon (shown on every deployment) ---- */
   .insta-btn {
@@ -609,7 +607,7 @@
     .side-col { align-items: center; width: 100%; max-width: 500px; }
     .timer-wrap { align-items: center; }
     .scene { justify-content: center; }
-    .kofi-btn { right: 12px; bottom: 12px; padding: 8px 10px; font-size: 9px; }
+    .kofi-btn { right: 12px; bottom: 12px; width: 30px; height: 30px; }
     .insta-btn { left: 12px; bottom: 12px; width: 30px; height: 30px; }
   }
 </style>
@@ -690,7 +688,6 @@
 
   <a id="kofiBtn" class="kofi-btn" href="https://ko-fi.com/thanhtrinh_" target="_blank" rel="noopener noreferrer" aria-label="Support on Ko-fi">
     <canvas id="kofiIcon"></canvas>
-    <span>SUPPORT</span>
   </a>
 
   <a id="instaBtn" class="insta-btn" href="https://www.instagram.com/quokkakaka__/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
@@ -992,15 +989,20 @@
   function renderKofiIcon(canvas) {
     const scale = 2;
     const ctx = setupCanvas(canvas, 12, 12, scale);
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(1 * scale, 3 * scale, 8 * scale, 6 * scale);
-    ctx.strokeStyle = "#fff";
-    ctx.lineWidth = scale;
+    ctx.strokeStyle = "#5c3f6e";
+    ctx.lineWidth = scale * 0.8;
+    ctx.strokeRect(1 * scale, 3 * scale, 8 * scale, 6 * scale);
     ctx.beginPath();
     ctx.arc(9.5 * scale, 5 * scale, 1.7 * scale, -1.1, 1.1);
     ctx.stroke();
-    ctx.fillStyle = "#8a5a2f";
-    ctx.fillRect(2 * scale, 4 * scale, 6 * scale, 4 * scale);
+    ctx.strokeStyle = "#5c3f6e";
+    ctx.lineWidth = scale * 0.6;
+    ctx.beginPath();
+    ctx.moveTo(3 * scale, 2 * scale);
+    ctx.lineTo(3 * scale, 0.5 * scale);
+    ctx.moveTo(6 * scale, 2 * scale);
+    ctx.lineTo(6 * scale, 0.5 * scale);
+    ctx.stroke();
   }
 
   function renderInstaIcon(canvas) {

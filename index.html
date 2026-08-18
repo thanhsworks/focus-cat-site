@@ -567,7 +567,7 @@
     align-items: center;
     gap: 8px;
     padding: 10px 14px;
-    background: #ff6a68;
+    background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
     border: 2px solid var(--plum);
     box-shadow: 3px 3px 0 var(--shadow);
     font-family: 'Press Start 2P', monospace;
@@ -578,7 +578,7 @@
     cursor: pointer;
   }
   .kofi-btn.show { display: flex; }
-  .kofi-btn:hover { background: #ff7f7d; }
+  .kofi-btn:hover { filter: brightness(1.08); }
   .kofi-btn:active { box-shadow: 0 0 0 var(--shadow); transform: translate(3px, 3px); }
   .kofi-btn canvas { width: 16px; height: 16px; flex: none; }
 
@@ -999,7 +999,7 @@
     ctx.beginPath();
     ctx.arc(9.5 * scale, 5 * scale, 1.7 * scale, -1.1, 1.1);
     ctx.stroke();
-    ctx.fillStyle = "#ff6a68";
+    ctx.fillStyle = "#8a5a2f";
     ctx.fillRect(2 * scale, 4 * scale, 6 * scale, 4 * scale);
   }
 

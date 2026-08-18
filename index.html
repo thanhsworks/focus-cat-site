@@ -557,11 +557,60 @@
     text-align: center;
   }
 
+  /* ---- ko-fi support button (github pages mirror only) ---- */
+  .kofi-btn {
+    display: none;
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 40;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: #ff6a68;
+    border: 2px solid var(--plum);
+    box-shadow: 3px 3px 0 var(--shadow);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    color: #fff;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .kofi-btn.show { display: flex; }
+  .kofi-btn:hover { background: #ff7f7d; }
+  .kofi-btn:active { box-shadow: 0 0 0 var(--shadow); transform: translate(3px, 3px); }
+  .kofi-btn canvas { width: 16px; height: 16px; flex: none; }
+
+  /* ---- instagram icon (shown on every deployment) ---- */
+  .insta-btn {
+    position: fixed;
+    left: 18px;
+    bottom: 18px;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    background: rgba(255, 255, 255, 0.55);
+    border: 2px solid var(--plum);
+    box-shadow: 2px 2px 0 var(--shadow);
+    cursor: pointer;
+    opacity: 0.8;
+    text-decoration: none;
+  }
+  .insta-btn:hover { opacity: 1; background: rgba(255, 255, 255, 0.85); }
+  .insta-btn:active { box-shadow: 0 0 0 var(--shadow); transform: translate(2px, 2px); }
+  .insta-btn canvas { width: 18px; height: 18px; }
+
   @media (max-width: 900px) {
     .desktop { justify-content: center; }
     .side-col { align-items: center; width: 100%; max-width: 500px; }
     .timer-wrap { align-items: center; }
     .scene { justify-content: center; }
+    .kofi-btn { right: 12px; bottom: 12px; padding: 8px 10px; font-size: 9px; }
+    .insta-btn { left: 12px; bottom: 12px; width: 30px; height: 30px; }
   }
 </style>
 <script>
@@ -638,6 +687,15 @@
 
   <div class="confetti-layer" id="confettiLayer"></div>
   <audio id="bgMusic" src="assets/audio/lofi-midnight-club.mp3" loop preload="none"></audio>
+
+  <a id="kofiBtn" class="kofi-btn" href="https://ko-fi.com/thanhtrinh_" target="_blank" rel="noopener noreferrer" aria-label="Support on Ko-fi">
+    <canvas id="kofiIcon"></canvas>
+    <span>SUPPORT</span>
+  </a>
+
+  <a id="instaBtn" class="insta-btn" href="https://www.instagram.com/quokkakaka__/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+    <canvas id="instaIcon"></canvas>
+  </a>
 
   <!-- =================== cat selector popup =================== -->
   <div class="overlay" id="overlay">
@@ -929,6 +987,33 @@
       ctx.lineTo(8 * scale, 9 * scale);
       ctx.stroke();
     }
+  }
+
+  function renderKofiIcon(canvas) {
+    const scale = 2;
+    const ctx = setupCanvas(canvas, 12, 12, scale);
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(1 * scale, 3 * scale, 8 * scale, 6 * scale);
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = scale;
+    ctx.beginPath();
+    ctx.arc(9.5 * scale, 5 * scale, 1.7 * scale, -1.1, 1.1);
+    ctx.stroke();
+    ctx.fillStyle = "#ff6a68";
+    ctx.fillRect(2 * scale, 4 * scale, 6 * scale, 4 * scale);
+  }
+
+  function renderInstaIcon(canvas) {
+    const scale = 2;
+    const ctx = setupCanvas(canvas, 12, 12, scale);
+    ctx.strokeStyle = "#5c3f6e";
+    ctx.lineWidth = scale * 0.8;
+    ctx.strokeRect(1 * scale, 1 * scale, 10 * scale, 10 * scale);
+    ctx.beginPath();
+    ctx.arc(6 * scale, 6 * scale, 2.6 * scale, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = "#5c3f6e";
+    ctx.fillRect(8 * scale, 2.2 * scale, 1 * scale, 1 * scale);
   }
 
   /* ============================================================
@@ -1364,6 +1449,11 @@
   renderCamIcon(document.getElementById("camIcon"));
   renderResetIcon(document.getElementById("resetIcon"));
   renderMusicIcon(document.getElementById("musicIcon"), musicEnabled);
+  renderKofiIcon(document.getElementById("kofiIcon"));
+  renderInstaIcon(document.getElementById("instaIcon"));
+  if (location.hostname.endsWith("github.io")) {
+    document.getElementById("kofiBtn").classList.add("show");
+  }
   renderMainCat();
   renderBowl(document.getElementById("bowlCanvas"));
   iceBlocks.forEach((block) => {

@@ -684,7 +684,7 @@
   </div>
 
   <div class="confetti-layer" id="confettiLayer"></div>
-  <audio id="bgMusic" src="assets/audio/lofi-midnight-club.mp3" loop preload="none"></audio>
+  <audio id="bgMusic" preload="none"></audio>
 
   <a id="kofiBtn" class="kofi-btn" href="https://ko-fi.com/thanhtrinh_" target="_blank" rel="noopener noreferrer" aria-label="Support on Ko-fi">
     <canvas id="kofiIcon"></canvas>
@@ -912,8 +912,37 @@
   const bgMusic = document.getElementById("bgMusic");
   bgMusic.volume = 0.35;
 
+  const LOFI_TRACKS = [
+    "assets/audio/lofi-midnight-club.mp3",
+    "assets/audio/lofi-study-session.mp3",
+    "assets/audio/lofi-sunny-cafe.mp3",
+    "assets/audio/lofi-good-night-chill.mp3",
+  ];
+  let trackOrder = shuffle(LOFI_TRACKS.map((_, i) => i));
+  let trackPos = 0;
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  bgMusic.addEventListener("ended", () => {
+    trackPos = (trackPos + 1) % trackOrder.length;
+    if (trackPos === 0) trackOrder = shuffle(LOFI_TRACKS.map((_, i) => i));
+    bgMusic.src = LOFI_TRACKS[trackOrder[trackPos]];
+    if (musicEnabled) {
+      const p = bgMusic.play();
+      if (p && p.catch) p.catch(() => {});
+    }
+  });
+
   function startMusic() {
     if (!musicEnabled) return;
+    if (!bgMusic.src) bgMusic.src = LOFI_TRACKS[trackOrder[trackPos]];
     const p = bgMusic.play();
     if (p && p.catch) p.catch(() => {});
   }
